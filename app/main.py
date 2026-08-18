@@ -74,3 +74,11 @@ def lead(lead: Lead):
         },
     }
 
+
+@app.get("/health")
+def health():
+    return {
+        "status": "Healty",
+        "environment": APP_ENV,
+        "service": "AI Lead Analyzer API"
+    }
