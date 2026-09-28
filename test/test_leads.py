@@ -10,7 +10,7 @@ from app.main import app
 from app.repositories.lead_repository import save_lead
 from app.services.lead_service import create_lead_service
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 
 
 def test_create_lead_success():
@@ -449,3 +449,26 @@ def test_create_lead_returns_500_on_database_error(monkeypatch):
     }
 
     
+def test_create_lead_returns_500_on_unexpected_error(monkeypatch):
+    def fail_create_lead_service(lead, db):
+      raise AttributeError("Unexpected programming error")
+
+    monkeypatch.setattr(
+        "app.routes.leads.create_lead_service",
+        fail_create_lead_service,
+    )
+
+    response = client.post(
+        "/leads",
+        json={
+            "name": "Test Lead",
+            "company": "Test Company",
+            "message": "This is a valid test message",
+            "company_size": 25,
+        },
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Internal server error",
+    }

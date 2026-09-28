@@ -4,7 +4,10 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import APP_ENV, configure_logging
-from app.handlers.exceptions import sqlalchemy_exception_handler
+from app.handlers.exceptions import (
+    general_exception_handler,
+    sqlalchemy_exception_handler,
+)
 from app.routes.follow_ups import router as follow_up_router
 from app.routes.leads import router as leads_router
 
@@ -20,6 +23,10 @@ app.add_exception_handler(
     sqlalchemy_exception_handler,
 )
 
+app.add_exception_handler(
+    Exception,
+    general_exception_handler,
+)
 app.include_router(leads_router)
 app.include_router(follow_up_router)
 @app.get("/")
