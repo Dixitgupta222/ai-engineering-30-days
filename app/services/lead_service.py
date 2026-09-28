@@ -109,30 +109,34 @@ def analyze_lead(message: str, company_size: int) -> dict:
         "contact": contact,
     }
 
-def create_lead_service(lead,db):
-    analysis = analyze_lead(
-        lead.message,
-        lead.company_size
-    )
-    lead_db = LeadDB(
-        name=lead.name,
-        company=lead.company,
-        company_size=lead.company_size,
-        message=lead.message,
-        score=analysis["score"],
-        priority=analysis["priority"],
-        recommendation=analysis["recommendation"],
-    )
+def create_lead_service(lead, db):
     try:
+        analysis = analyze_lead(
+            lead.message,
+            lead.company_size
+        )
+
+        # Create LeadDB object here
+        lead_db = LeadDB(
+            name=lead.name,
+            company=lead.company,
+            company_size=lead.company_size,
+            message=lead.message,
+            score=analysis["score"],
+            priority=analysis["priority"],
+            recommendation=analysis["recommendation"],
+        )
         saved_lead = save_lead(db, lead_db)
 
         logger.info(
-            "Lead created successfully: id=%s, company=%s, score=%s, priority=%s",
+            "Lead created successfully: id=%s, company=%s",
             saved_lead.id,
             saved_lead.company,
-            saved_lead.score,
-            saved_lead.priority,
         )
+        return {
+            "lead": saved_lead,
+            "analysis": analysis,
+        }
 
     except Exception:
         logger.exception(
@@ -140,10 +144,6 @@ def create_lead_service(lead,db):
             lead.company,
         )
         raise
-    return {
-        "lead": saved_lead,
-        "analysis": analysis,
-    }
 
 def get_leads_service(
     db,
