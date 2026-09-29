@@ -20,6 +20,7 @@ class LeadAnalysis(BaseModel):
     priority: str
     recommendation: str
     contact: str
+    ai_analysis: str | None = None
 
 class LeadDBResponse(BaseModel):
     id: int

@@ -5,6 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
 
+from openai import OpenAIError
+
 from app.core.config import configure_logging
 from app.main import app
 from app.repositories.lead_repository import save_lead
@@ -486,3 +488,98 @@ def test_readiness_returns_503_when_database_is_unavailable(monkeypatch):
         "status": "not_ready",
         "database": "unavailable",
     }
+
+def test_create_lead_service_with_ai_analysis(monkeypatch):
+    lead = Mock(
+        name="AI Test Lead",
+        company="AI Test Company",
+        message="We need an AI chatbot",
+        company_size=25,
+    )
+    db = Mock()
+    saved_lead = Mock(
+        id=123,
+        company="AI Test Company",
+        score=60,
+        priority="medium",
+    )
+
+    monkeypatch.setattr(
+        "app.services.lead_service.analyze_lead_message",
+        lambda message: "The lead is interested in an AI chatbot.",
+    )
+    monkeypatch.setattr(
+        "app.services.lead_service.save_lead",
+        lambda db, lead_db: saved_lead,
+    )
+
+    result = create_lead_service(lead, db)
+
+    assert result["lead"] == saved_lead
+    assert result["analysis"]["ai_analysis"] == (
+        "The lead is interested in an AI chatbot."
+    )
+
+
+def test_create_lead_service_continues_when_ai_fails(monkeypatch):
+    lead = Mock(
+        name="AI Failure Test",
+        company="Test Company",
+        message="We need an AI chatbot",
+        company_size=25,
+    )
+    db = Mock()
+    saved_lead = Mock(
+        id=124,
+        company="Test Company",
+        score=60,
+        priority="medium",
+    )
+
+    def fail_ai_analysis(message):
+        raise OpenAIError("Mock API failure")
+
+    monkeypatch.setattr(
+        "app.services.lead_service.analyze_lead_message",
+        fail_ai_analysis,
+    )
+    monkeypatch.setattr(
+        "app.services.lead_service.save_lead",
+        lambda db, lead_db: saved_lead,
+    )
+
+    result = create_lead_service(lead, db)
+
+    assert result["lead"] == saved_lead
+    assert result["analysis"]["ai_analysis"] is None
+    assert result["analysis"]["score"] is not None
+    assert result["analysis"]["priority"] is not None
+
+
+
+def test_create_lead_api_returns_ai_analysis(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.lead_service.analyze_lead_message",
+        lambda message: "The customer is interested in an AI chatbot.",
+    )
+
+    response = client.post(
+        "/leads",
+        json={
+            "name": "AI Integration Test",
+            "company": "Demo Company",
+            "message": "We need an AI chatbot for our business",
+            "company_size": 25,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["message"] == "Lead analyzed successfully"
+    assert data["analysis"]["ai_analysis"] == (
+        "The customer is interested in an AI chatbot."
+    )
+    assert data["analysis"]["score"] is not None
+    assert data["analysis"]["priority"] is not None

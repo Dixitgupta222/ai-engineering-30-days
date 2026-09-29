@@ -2,6 +2,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from openai import OpenAIError
+
 from app.models.lead import LeadDB
 from app.repositories.lead_repository import (
     delete_lead,
@@ -12,6 +14,7 @@ from app.repositories.lead_repository import (
     update_lead,
     update_lead_analysis,
 )
+from app.services.llm_service import analyze_lead_message
 
 BASE_SCORE = 20
 AI_SCORE = 20
@@ -109,14 +112,28 @@ def analyze_lead(message: str, company_size: int) -> dict:
         "contact": contact,
     }
 
+
 def create_lead_service(lead, db):
     try:
+        # Existing rule-based analysis
         analysis = analyze_lead(
             lead.message,
             lead.company_size
         )
 
-        # Create LeadDB object here
+        # Additional AI analysis
+        try:
+            ai_analysis = analyze_lead_message(lead.message)
+        except OpenAIError:
+            logger.warning(
+                "AI analysis unavailable; "
+                "continuing with rule-based analysis."
+            )
+            ai_analysis = None
+
+        analysis["ai_analysis"] = ai_analysis
+
+        # Save the lead using existing database logic
         lead_db = LeadDB(
             name=lead.name,
             company=lead.company,
@@ -126,6 +143,7 @@ def create_lead_service(lead, db):
             priority=analysis["priority"],
             recommendation=analysis["recommendation"],
         )
+
         saved_lead = save_lead(db, lead_db)
 
         logger.info(
@@ -133,6 +151,7 @@ def create_lead_service(lead, db):
             saved_lead.id,
             saved_lead.company,
         )
+
         return {
             "lead": saved_lead,
             "analysis": analysis,
