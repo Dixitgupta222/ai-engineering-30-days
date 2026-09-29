@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -6,7 +7,9 @@ load_dotenv()
 
 APP_ENV = os.getenv("APP_ENV", "development")
 
-import logging
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not configured")
 
 
 def configure_logging():
