@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 APP_ENV = os.getenv("APP_ENV", "development")
+if APP_ENV not in ("development", "production"):
+    raise ValueError(
+        f"Invalid APP_ENV: {APP_ENV}. "
+        "Use 'development' or 'production'."
+    )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
