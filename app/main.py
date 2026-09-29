@@ -1,9 +1,12 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import APP_ENV, configure_logging
+from app.core.database import engine
 from app.handlers.exceptions import (
     general_exception_handler,
     sqlalchemy_exception_handler,
@@ -41,3 +44,25 @@ def health():
         "environment": APP_ENV,
         "service": "AI Lead Analyzer API"
     }
+
+@app.get("/ready")
+def readiness():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+
+        return {
+            "status": "ready",
+            "database": "connected",
+        }
+
+    except SQLAlchemyError:
+        logger.exception("Database readiness check failed")
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "database": "unavailable",
+            },
+        )

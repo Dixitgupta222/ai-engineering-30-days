@@ -472,3 +472,17 @@ def test_create_lead_returns_500_on_unexpected_error(monkeypatch):
     assert response.json() == {
         "detail": "Internal server error",
     }
+
+def test_readiness_returns_503_when_database_is_unavailable(monkeypatch):
+    mock_engine = Mock()
+    mock_engine.connect.side_effect = SQLAlchemyError("Database unavailable")
+
+    monkeypatch.setattr("app.main.engine", mock_engine)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "database": "unavailable",
+    }
