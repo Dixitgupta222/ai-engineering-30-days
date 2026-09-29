@@ -1,7 +1,17 @@
+# Environment and secrets
 .venv/
 .env
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Generated snapshot
+project_snapshot.txt
+
+# macOS
 .DS_Store
+
+# Testing and coverage
 .pytest_cache/
 .coverage
