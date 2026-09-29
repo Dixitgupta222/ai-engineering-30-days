@@ -6,6 +6,7 @@ from sqlalchemy import CheckConstraint, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.schemas.llm_schema import LeadMessageAnalysis
 
 if TYPE_CHECKING:
     from app.models.follow_up import FollowUpDB
@@ -15,12 +16,14 @@ class Lead(BaseModel):
     company: str = Field(min_length=1)
     message: str = Field(min_length=5)
     company_size: int = Field(ge=0)
+
 class LeadAnalysis(BaseModel):
     score: int
     priority: str
     recommendation: str
     contact: str
     ai_analysis: str | None = None
+    ai_details: LeadMessageAnalysis | None = None
 
 class LeadDBResponse(BaseModel):
     id: int

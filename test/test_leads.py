@@ -11,6 +11,7 @@ from app.core.config import configure_logging
 from app.main import app
 from app.repositories.lead_repository import save_lead
 from app.services.lead_service import create_lead_service
+from app.schemas.llm_schema import LeadMessageAnalysis
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -490,37 +491,90 @@ def test_readiness_returns_503_when_database_is_unavailable(monkeypatch):
     }
 
 def test_create_lead_service_with_ai_analysis(monkeypatch):
-    lead = Mock(
-        name="AI Test Lead",
-        company="AI Test Company",
-        message="We need an AI chatbot",
-        company_size=25,
+    from types import SimpleNamespace
+
+    from app.models.lead import Lead
+    from app.schemas.llm_schema import LeadMessageAnalysis
+    from app.services import lead_service
+
+    mock_analysis = LeadMessageAnalysis(
+        business_need="AI chatbot",
+        urgency="medium",
+        budget_mentioned=False,
+        sentiment="positive",
+        summary="The customer is interested in an AI chatbot.",
     )
-    db = Mock()
-    saved_lead = Mock(
-        id=123,
-        company="AI Test Company",
-        score=60,
-        priority="medium",
+
+    saved_lead = SimpleNamespace(
+        id=1,
+        name="Test Company",
+        company="Test Company",
     )
 
     monkeypatch.setattr(
-        "app.services.lead_service.analyze_lead_message",
-        lambda message: "The lead is interested in an AI chatbot.",
+        lead_service,
+        "analyze_lead_message_structured",
+        lambda message: mock_analysis,
     )
+
     monkeypatch.setattr(
-        "app.services.lead_service.save_lead",
+        lead_service,
+        "save_lead",
         lambda db, lead_db: saved_lead,
     )
 
-    result = create_lead_service(lead, db)
-
-    assert result["lead"] == saved_lead
-    assert result["analysis"]["ai_analysis"] == (
-        "The lead is interested in an AI chatbot."
+    lead = Lead(
+        name="Test Company",
+        company="Test Company",
+        message="We are interested in an AI chatbot.",
+        company_size=50,
     )
 
+    result = lead_service.create_lead_service(lead, db=None)
 
+    assert result["lead"].id == 1
+    assert result["analysis"]["ai_analysis"] == (
+        "The customer is interested in an AI chatbot."
+    )
+    assert result["analysis"]["ai_details"].business_need == "AI chatbot"
+
+def test_create_lead_api_returns_ai_analysis(monkeypatch):
+    from app.schemas.llm_schema import LeadMessageAnalysis
+
+    mock_analysis = LeadMessageAnalysis(
+        business_need="AI chatbot",
+        urgency="medium",
+        budget_mentioned=False,
+        sentiment="positive",
+        summary="The customer is interested in an AI chatbot.",
+    )
+
+    monkeypatch.setattr(
+        "app.services.lead_service.analyze_lead_message_structured",
+        lambda message: mock_analysis,
+    )
+
+    payload = {
+        "name": "Test Company",
+        "company": "Test Company",
+        "message": "We are interested in an AI chatbot.",
+        "company_size": 50,
+    }
+
+    response = client.post(
+        "/leads",
+        json=payload,
+    )
+
+    assert response.status_code == 200, response.text
+
+    data = response.json()
+
+    assert data["analysis"]["ai_analysis"] == (
+        "The customer is interested in an AI chatbot."
+    )
+    assert data["analysis"]["ai_details"]["business_need"] == "AI chatbot"
+    
 def test_create_lead_service_continues_when_ai_fails(monkeypatch):
     lead = Mock(
         name="AI Failure Test",
@@ -554,32 +608,3 @@ def test_create_lead_service_continues_when_ai_fails(monkeypatch):
     assert result["analysis"]["ai_analysis"] is None
     assert result["analysis"]["score"] is not None
     assert result["analysis"]["priority"] is not None
-
-
-
-def test_create_lead_api_returns_ai_analysis(monkeypatch):
-    monkeypatch.setattr(
-        "app.services.lead_service.analyze_lead_message",
-        lambda message: "The customer is interested in an AI chatbot.",
-    )
-
-    response = client.post(
-        "/leads",
-        json={
-            "name": "AI Integration Test",
-            "company": "Demo Company",
-            "message": "We need an AI chatbot for our business",
-            "company_size": 25,
-        },
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["message"] == "Lead analyzed successfully"
-    assert data["analysis"]["ai_analysis"] == (
-        "The customer is interested in an AI chatbot."
-    )
-    assert data["analysis"]["score"] is not None
-    assert data["analysis"]["priority"] is not None

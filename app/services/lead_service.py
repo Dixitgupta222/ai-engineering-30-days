@@ -14,7 +14,9 @@ from app.repositories.lead_repository import (
     update_lead,
     update_lead_analysis,
 )
-from app.services.llm_service import analyze_lead_message
+from app.services.llm_service import (
+    analyze_lead_message_structured,
+)
 
 BASE_SCORE = 20
 AI_SCORE = 20
@@ -121,17 +123,23 @@ def create_lead_service(lead, db):
             lead.company_size
         )
 
-        # Additional AI analysis
+        # Additional structured AI analysis
+        ai_analysis = None
+        ai_details = None
+
         try:
-            ai_analysis = analyze_lead_message(lead.message)
-        except OpenAIError:
+            ai_details = analyze_lead_message_structured(lead.message)
+            ai_analysis = ai_details.summary
+
+        except (OpenAIError, ValueError):
             logger.warning(
-                "AI analysis unavailable; "
-                "continuing with rule-based analysis."
+                "Structured AI analysis unavailable; "
+                "continuing with rule-based analysis.",
+                exc_info=True,
             )
-            ai_analysis = None
 
         analysis["ai_analysis"] = ai_analysis
+        analysis["ai_details"] = ai_details
 
         # Save the lead using existing database logic
         lead_db = LeadDB(
