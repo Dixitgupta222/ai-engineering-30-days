@@ -574,7 +574,7 @@ def test_create_lead_api_returns_ai_analysis(monkeypatch):
         "The customer is interested in an AI chatbot."
     )
     assert data["analysis"]["ai_details"]["business_need"] == "AI chatbot"
-    
+
 def test_create_lead_service_continues_when_ai_fails(monkeypatch):
     lead = Mock(
         name="AI Failure Test",
@@ -594,7 +594,7 @@ def test_create_lead_service_continues_when_ai_fails(monkeypatch):
         raise OpenAIError("Mock API failure")
 
     monkeypatch.setattr(
-        "app.services.lead_service.analyze_lead_message",
+        "app.services.lead_service.analyze_lead_message_structured",
         fail_ai_analysis,
     )
     monkeypatch.setattr(
