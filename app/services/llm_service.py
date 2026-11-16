@@ -6,14 +6,16 @@ from app.schemas.llm_schema import LeadMessageAnalysis
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI()
+# client = OpenAI()
 
+import ollama
 
 def analyze_lead_message(message: str) -> str:
     """
     Generate a plain-text analysis of a lead message.
     """
     try:
+        client = OpenAI()
         response = client.responses.create(
             model="gpt-4.1-mini",
             instructions=(
@@ -37,6 +39,7 @@ def analyze_lead_message_structured(
     Analyze a lead message and return validated structured data.
     """
     try:
+        client = OpenAI()
         response = client.responses.parse(
             model="gpt-4.1-mini",
             input=[
@@ -66,3 +69,19 @@ def analyze_lead_message_structured(
     except OpenAIError:
         logger.exception("OpenAI structured analysis failed")
         raise
+
+def generate_rag_answer(prompt: str) -> str:
+    """
+    Generate a customer answer using retrieved company knowledge.
+    """
+    response = ollama.chat(
+        model="llama3.2:3b",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response.message.content

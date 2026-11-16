@@ -1,7 +1,7 @@
 # Environment and secrets
 .venv/
 .env
-
+chroma_db/
 # Python cache
 __pycache__/
 *.pyc
