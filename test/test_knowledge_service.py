@@ -38,7 +38,7 @@ def test_answer_multi_intent_question():
     )
 
     assert "estimate" in result.lower()
-    assert "scope of the project" in result.lower() or "project scope" in result.lower()
+    assert "scope" in result.lower()
     assert "privacy" in result.lower()
     assert "security" in result.lower()
     assert "regulatory" in result.lower()

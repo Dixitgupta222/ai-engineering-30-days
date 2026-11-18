@@ -103,9 +103,8 @@ def identify_knowledge_category(customer_message: str) -> list[str]:
 
 def answer_customer_with_knowledge(customer_message: str) -> str:
     categories = identify_knowledge_category(customer_message)
-
+    is_healthcare_query = "healthcare" in categories
     knowledge = []
-
     if categories:
         for category in categories:
             category_knowledge = search_knowledge(
@@ -128,4 +127,19 @@ def answer_customer_with_knowledge(customer_message: str) -> str:
     )
 
     # print(prompt)
-    return generate_rag_answer(prompt)
+    answer = generate_rag_answer(prompt)
+
+    if is_healthcare_query:
+        required_warning = (
+            "Healthcare-related projects require a review of privacy, "
+            "security, and regulatory requirements before feasibility "
+            "can be confirmed."
+        )
+
+        if not all(
+            term in answer.lower()
+            for term in ["privacy", "security", "regulatory"]
+        ):
+            answer += "\n\n" + required_warning
+
+    return answer
